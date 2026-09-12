@@ -7,11 +7,8 @@ async function loadTrackers() {
   const url = chrome.runtime.getURL("trackers.json");
   const res = await fetch(url);
   TRACKER_MAP = await res.json();
-  console.log(`[Expose] loaded ${TRACKER_MAP.length} known trackers`);
 }
 loadTrackers().catch((err) => console.error("[Expose] failed to load trackers.json", err));
-
-console.log("[Expose] background service worker started");
 
 // --- Helpers ---
 
@@ -109,10 +106,6 @@ async function insertOptoutLog(company) {
   }
 }
 
-// Temporary debug counter — remove once detection is confirmed working.
-let debugSeenCount = 0;
-const DEBUG_LOG_LIMIT = 40;
-
 // --- Core capture: observe every outbound request, non-blocking ---
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
@@ -136,15 +129,8 @@ chrome.webRequest.onBeforeRequest.addListener(
       return;
     }
 
-    if (debugSeenCount < DEBUG_LOG_LIMIT) {
-      debugSeenCount++;
-      console.log(`[Expose] third-party host seen: ${requestHost} (page: ${pageHost})`);
-    }
-
     const match = matchTracker(requestHost);
     if (!match) return;
-
-    console.log(`[Expose] MATCH: ${requestHost} -> ${match.company} (${match.category})`);
 
     const dedupeKey = `${details.tabId}::${match.domain}`;
     if (seen.has(dedupeKey)) return;
