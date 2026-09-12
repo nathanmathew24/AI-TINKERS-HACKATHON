@@ -1,0 +1,197 @@
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --border: #262a33;
+  --text: #eef0f4;
+  --muted: #9aa1ad;
+
+  --low: #10b981;
+  --medium: #f59e0b;
+  --high: #ef4444;
+
+  --cat-advertising: #f59e0b;
+  --cat-analytics: #3b82f6;
+  --cat-data_broker: #ef4444;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  width: 340px;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #1b1f28, #10131a);
+  border-bottom: 1px solid var(--border);
+}
+
+#site-name {
+  font-weight: 700;
+  font-size: 14px;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#site-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.score {
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  background: #2a2e38;
+  color: #cfd3db;
+  transition: background-color 0.3s ease;
+}
+.score.low { background: var(--low); color: #0f1115; }
+.score.medium { background: var(--medium); color: #0f1115; }
+.score.high { background: var(--high); color: #0f1115; }
+
+#counts {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 0;
+}
+
+.count-pill {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.count-pill strong { font-size: 18px; line-height: 1; }
+.count-pill span { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.count-pill.broker strong { color: var(--cat-data_broker); }
+
+.section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  padding: 14px 16px 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#tracker-list, #optout-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 16px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.tracker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  animation: slideIn 0.25s ease;
+}
+.tracker-row:last-child { border-bottom: none; }
+
+.tracker-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot.advertising { background: var(--cat-advertising); }
+.dot.analytics { background: var(--cat-analytics); }
+.dot.data_broker { background: var(--cat-data_broker); }
+
+.tracker-name {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-pill {
+  font-size: 9px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.cat-pill.advertising { background: rgba(245,158,11,0.15); color: var(--cat-advertising); }
+.cat-pill.analytics { background: rgba(59,130,246,0.15); color: var(--cat-analytics); }
+.cat-pill.data_broker { background: rgba(239,68,68,0.15); color: var(--cat-data_broker); }
+
+#empty-state {
+  padding: 10px 16px 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#gpc-pill {
+  background: rgba(16,185,129,0.15);
+  color: var(--low);
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+#optout-sub {
+  padding: 0 16px 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.optout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.optout-row:last-child { border-bottom: none; }
+
+.optout-status {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.optout-status.committed { background: rgba(16,185,129,0.15); color: var(--low); }
+.optout-status.unknown { background: rgba(245,158,11,0.15); color: var(--medium); }
+
+#optout-section { padding-bottom: 14px; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

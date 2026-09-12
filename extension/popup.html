@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header id="header">
+    <div id="site">
+      <div id="site-name">Loading…</div>
+      <div id="site-sub">watching this page</div>
+    </div>
+    <div id="score-badge" class="score">
+      <span id="score-label">…</span>
+    </div>
+  </header>
+
+  <section id="counts">
+    <div class="count-pill" id="count-total">
+      <strong id="total-num">0</strong><span>trackers</span>
+    </div>
+    <div class="count-pill broker" id="count-broker">
+      <strong id="broker-num">0</strong><span>data brokers</span>
+    </div>
+  </section>
+
+  <section id="list-section">
+    <div class="section-title">Live feed</div>
+    <ul id="tracker-list"></ul>
+    <div id="empty-state">No trackers detected yet on this page.</div>
+  </section>
+
+  <section id="optout-section">
+    <div class="section-title">
+      Privacy signal
+      <span id="gpc-pill" class="gpc-active">GPC active</span>
+    </div>
+    <div id="optout-sub">Sent to every request on this page. Status per company:</div>
+    <ul id="optout-list"></ul>
+  </section>
+
+  <script src="popup.js"></script>
+</body>
+</html>
