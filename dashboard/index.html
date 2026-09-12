@@ -24,12 +24,12 @@
     <header><h1>Expose</h1><span id="connection" class="connection">Connecting…</span></header>
     <main>
       <section>
-        <h2>Current page risk</h2>
-        <div id="current-url" class="url">Waiting for tracker activity…</div>
-        <p id="summary" class="summary">No trackers seen yet.</p><span id="risk" class="badge low">Low</span>
+        <h2>What's happening on this page</h2>
+        <div id="current-url" class="url">Watching for activity…</div>
+        <p id="summary" class="summary">Nothing detected yet.</p><span id="risk" class="badge low">Low risk</span>
       </section>
-      <section><h2>GPC signals sent</h2><ul id="optouts"><li class="empty">No opt-out signals yet.</li></ul></section>
-      <section><h2>Live tracker activity</h2><ul id="events"><li class="empty">No tracker events yet.</li></ul></section>
+      <section><h2>What we've asked them to do</h2><ul id="optouts"><li class="empty">Nothing sent yet.</li></ul></section>
+      <section><h2>Who's watching you</h2><ul id="events"><li class="empty">Nothing detected yet.</li></ul></section>
     </main>
     <script>
       const config = window.TRACKER_TRANSPARENCY_CONFIG || {};
@@ -44,27 +44,48 @@
       let supabaseClient = null;
       const allEvents = [];
 
+      const MAX_VISIBLE_ROWS = 15; // keep the demo tidy — trim oldest as new ones arrive
+
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
       const formatDate = (value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const clearEmpty = (list) => { if (list.querySelector('.empty')) list.innerHTML = ''; };
+      // Live inserts are prepended (newest first), so trim from the end.
+      const trimList = (list) => { while (list.children.length > MAX_VISIBLE_ROWS) list.removeChild(list.lastChild); };
+      // The initial historical batch is appended oldest-first, so trimming
+      // down to the most recent N means removing from the front instead.
+      const trimListFromFront = (list) => { while (list.children.length > MAX_VISIBLE_ROWS) list.removeChild(list.firstChild); };
+
+      // Plain-English labels for a non-technical viewer. The raw domain is
+      // still shown, small, for anyone who wants to verify it's real.
+      const CATEGORY_LABELS = {
+        advertising: 'Advertising company',
+        analytics: 'Analytics company',
+        data_broker: 'Data broker — buys and sells personal data',
+      };
+
       function renderEvent(row, prepend = true) {
         clearEmpty(eventsList); const item = document.createElement('li');
-        item.innerHTML = `<strong>${escapeHtml(row.company_name || row.tracker_domain)}</strong><span class="meta">${escapeHtml(row.category || 'unknown')} · ${escapeHtml(row.tracker_domain)} · ${formatDate(row.created_at)}</span>`;
+        const label = CATEGORY_LABELS[row.category] || 'Unknown company';
+        item.innerHTML = `<strong>${escapeHtml(row.company_name || row.tracker_domain)}</strong><span class="meta">${escapeHtml(label)} · seen at ${formatDate(row.created_at)} · <code>${escapeHtml(row.tracker_domain)}</code></span>`;
         eventsList[prepend ? 'prepend' : 'append'](item);
+        if (prepend) trimList(eventsList);
       }
       function renderOptout(row, prepend = true) {
         clearEmpty(optoutsList); const item = document.createElement('li');
         const isCommitted = commitments.has(String(row.company_name).toLowerCase());
-        const commitment = isCommitted ? 'committed to honoring this' : 'no known commitment';
-        item.innerHTML = `<strong>Sent to ${escapeHtml(row.company_name)}</strong><span class="meta">${escapeHtml(row.method)} signal — ${commitment} · ${formatDate(row.created_at)}</span>`;
+        const commitment = isCommitted
+          ? "They've publicly promised to respect this"
+          : "They haven't promised to listen — we can't guarantee they will";
+        item.innerHTML = `<strong>We told ${escapeHtml(row.company_name)} to stop tracking you</strong><span class="meta">${commitment} · sent at ${formatDate(row.created_at)}</span>`;
         optoutsList[prepend ? 'prepend' : 'append'](item);
+        if (prepend) trimList(optoutsList);
       }
       async function updateRisk(pageUrl) {
         const trackers = allEvents.filter(row => row.page_url === pageUrl).map(({ company_name, category }) => ({ company_name, category }));
-        currentUrl.textContent = pageUrl; summary.textContent = 'Updating risk summary…';
+        currentUrl.textContent = pageUrl; summary.textContent = 'Figuring out how risky this is…';
         const { data, error } = await supabaseClient.functions.invoke('risk-summary', { body: { page_url: pageUrl, trackers } });
-        if (error || !data) { summary.textContent = 'Risk summary is temporarily unavailable.'; return; }
-        summary.textContent = data.summary; risk.textContent = data.risk_level; risk.className = `badge ${data.risk_level}`;
+        if (error || !data) { summary.textContent = "Couldn't check right now — try again in a moment."; return; }
+        summary.textContent = data.summary; risk.textContent = `${data.risk_level} risk`; risk.className = `badge ${data.risk_level}`;
       }
       function receiveEvent(row) { allEvents.push(row); renderEvent(row); if (row.page_url !== activePageUrl) activePageUrl = row.page_url; if (row.page_url === activePageUrl) updateRisk(activePageUrl); }
 
@@ -80,6 +101,7 @@
           if (trackerResult.error || optoutResult.error) throw trackerResult.error || optoutResult.error;
           trackerResult.data.reverse().forEach(row => { allEvents.push(row); renderEvent(row, false); });
           optoutResult.data.reverse().forEach(row => renderOptout(row, false));
+          trimListFromFront(eventsList); trimListFromFront(optoutsList);
           if (allEvents.length) { activePageUrl = allEvents.at(-1).page_url; updateRisk(activePageUrl); }
           connection.textContent = 'Live connection active';
         }).catch(error => { connection.textContent = `Connection error: ${error.message}`; connection.classList.add('error'); });
