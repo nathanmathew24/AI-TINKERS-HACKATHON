@@ -1,5 +1,6 @@
 let currentTabId = null;
 let commitments = [];
+let scanTimedOut = false;
 const state = new Map(); // company -> { company, category } (dedupe in UI too)
 
 const el = {
@@ -25,7 +26,9 @@ function computeScore() {
   if (weight >= 12 || brokerCount >= 3) level = "high";
   else if (weight >= 5 || brokerCount >= 1) level = "medium";
 
-  if (items.length === 0) level = "unknown";
+  // Only show "still scanning" briefly — after the timeout, zero trackers
+  // found is a real result (low risk), not a stuck loading state.
+  if (items.length === 0 && !scanTimedOut) level = "unknown";
   return { level, total: items.length, brokerCount };
 }
 
@@ -34,7 +37,11 @@ function render() {
 
   el.scoreBadge.className = `score ${level}`;
   el.scoreLabel.textContent =
-    level === "unknown" ? "Scanning…" : level.toUpperCase();
+    level === "unknown"
+      ? "Scanning…"
+      : total === 0
+      ? "None found"
+      : level.toUpperCase();
 
   el.totalNum.textContent = total;
   el.brokerNum.textContent = brokerCount;
@@ -98,6 +105,11 @@ async function init() {
   });
   (res?.trackers || []).forEach(addTracker);
   render();
+
+  setTimeout(() => {
+    scanTimedOut = true;
+    render();
+  }, 2500);
 }
 
 chrome.runtime.onMessage.addListener((message) => {

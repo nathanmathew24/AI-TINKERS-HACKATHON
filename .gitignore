@@ -1,5 +1,6 @@
 dashboard/config.js
 extension/config.js
+extension/_metadata/
 .env
 .env.*
 !dashboard/config.example.js

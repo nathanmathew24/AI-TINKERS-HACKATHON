@@ -7,8 +7,11 @@ async function loadTrackers() {
   const url = chrome.runtime.getURL("trackers.json");
   const res = await fetch(url);
   TRACKER_MAP = await res.json();
+  console.log(`[Expose] loaded ${TRACKER_MAP.length} known trackers`);
 }
-loadTrackers();
+loadTrackers().catch((err) => console.error("[Expose] failed to load trackers.json", err));
+
+console.log("[Expose] background service worker started");
 
 // --- Helpers ---
 
@@ -33,6 +36,10 @@ const seen = new Set(); // key: `${tabId}::${trackerDomain}`
 // What the popup renders: per-tab list of trackers found on the current page.
 const tabTrackers = new Map(); // tabId -> [{ company, category, domain }]
 
+// The actual current page URL per tab (webRequest's `initiator` is only an
+// origin, not the full URL with path — this is what gives us the real one).
+const tabUrls = new Map(); // tabId -> full page URL
+
 function recordForTab(tabId, match) {
   if (!tabTrackers.has(tabId)) tabTrackers.set(tabId, []);
   tabTrackers.get(tabId).push({
@@ -49,6 +56,7 @@ chrome.webNavigation.onCommitted.addListener((details) => {
       if (key.startsWith(details.tabId + "::")) seen.delete(key);
     }
     tabTrackers.set(details.tabId, []);
+    tabUrls.set(details.tabId, details.url);
   }
 });
 
@@ -70,9 +78,40 @@ async function insertTrackerEvent(pageUrl, trackerDomain, company, category) {
       }),
     });
   } catch (err) {
-    console.error("[Tracker Transparency] insert failed", err);
+    console.error("[Expose] insert failed", err);
   }
 }
+
+// Every detected company also gets a GPC opt-out log entry, since the
+// Sec-GPC header (set via gpc_rules.json) is already being sent to every
+// outbound request regardless. This just records that fact per company so
+// the dashboard can show it. Status is always "sent" — whether a company
+// actually honors it is a separate, unverifiable question the UI is honest
+// about, not something this log claims to know.
+async function insertOptoutLog(company) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/optout_log`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        company_name: company,
+        method: "GPC",
+        status: "sent",
+      }),
+    });
+  } catch (err) {
+    console.error("[Expose] optout log insert failed", err);
+  }
+}
+
+// Temporary debug counter — remove once detection is confirmed working.
+let debugSeenCount = 0;
+const DEBUG_LOG_LIMIT = 40;
 
 // --- Core capture: observe every outbound request, non-blocking ---
 chrome.webRequest.onBeforeRequest.addListener(
@@ -83,7 +122,10 @@ chrome.webRequest.onBeforeRequest.addListener(
     let requestHost, pageHost, pageUrl;
     try {
       requestHost = new URL(details.url).hostname;
-      pageUrl = details.initiator || details.url;
+      // Prefer the real tracked page URL (has the full path); fall back to
+      // initiator (origin only) or the request's own URL for edge cases
+      // where we haven't seen a navigation event for this tab yet.
+      pageUrl = tabUrls.get(details.tabId) || details.initiator || details.url;
       pageHost = new URL(pageUrl).hostname;
     } catch {
       return;
@@ -94,14 +136,22 @@ chrome.webRequest.onBeforeRequest.addListener(
       return;
     }
 
+    if (debugSeenCount < DEBUG_LOG_LIMIT) {
+      debugSeenCount++;
+      console.log(`[Expose] third-party host seen: ${requestHost} (page: ${pageHost})`);
+    }
+
     const match = matchTracker(requestHost);
     if (!match) return;
+
+    console.log(`[Expose] MATCH: ${requestHost} -> ${match.company} (${match.category})`);
 
     const dedupeKey = `${details.tabId}::${match.domain}`;
     if (seen.has(dedupeKey)) return;
     seen.add(dedupeKey);
 
     insertTrackerEvent(pageUrl, match.domain, match.company, match.category);
+    insertOptoutLog(match.company);
     recordForTab(details.tabId, match);
 
     // Also tell the popup (if open) about this live event for this tab
@@ -138,6 +188,7 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     seen.add(dedupeKey);
 
     insertTrackerEvent(message.pageUrl, match.domain, match.company, match.category);
+    insertOptoutLog(match.company);
     recordForTab(tabId, match);
 
     chrome.runtime
