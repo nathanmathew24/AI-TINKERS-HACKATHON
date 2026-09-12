@@ -1,0 +1,4 @@
+dashboard/config.js
+.env
+.env.*
+!dashboard/config.example.js

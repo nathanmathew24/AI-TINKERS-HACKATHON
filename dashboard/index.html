@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tracker Transparency</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./config.js"></script>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #08111f; color: #eef5ff; }
+      * { box-sizing: border-box; } body { margin: 0; padding: 28px; }
+      header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #25405f; padding-bottom: 20px; margin-bottom: 24px; }
+      h1 { margin: 0; font-size: clamp(28px, 4vw, 48px); } .connection { color: #a8bed9; font-size: 18px; }
+      main { display: grid; grid-template-columns: 1.3fr .9fr; gap: 24px; } section { background: #101e31; border: 1px solid #25405f; border-radius: 14px; padding: 22px; }
+      h2 { margin: 0 0 16px; font-size: 25px; } .url { color: #a8bed9; overflow-wrap: anywhere; font-size: 16px; }
+      .summary { font-size: 26px; line-height: 1.35; margin: 16px 0; } .badge { display: inline-block; border-radius: 999px; padding: 7px 13px; font-size: 17px; font-weight: 800; text-transform: uppercase; }
+      .low { background: #0c663d; } .medium { background: #8c5a08; } .high { background: #9e2834; }
+      ul { list-style: none; padding: 0; margin: 0; } li { border-top: 1px solid #25405f; padding: 14px 0; font-size: 19px; } li:first-child { border-top: 0; }
+      .meta { display: block; color: #a8bed9; font-size: 15px; margin-top: 5px; }.empty { color: #a8bed9; font-size: 19px; }
+      .error { color: #ffb4bc; } @media (max-width: 800px) { body { padding: 16px; } main { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header><h1>Tracker Transparency</h1><span id="connection" class="connection">Connecting…</span></header>
+    <main>
+      <section>
+        <h2>Current page risk</h2>
+        <div id="current-url" class="url">Waiting for tracker activity…</div>
+        <p id="summary" class="summary">No trackers seen yet.</p><span id="risk" class="badge low">Low</span>
+      </section>
+      <section><h2>GPC signals sent</h2><ul id="optouts"><li class="empty">No opt-out signals yet.</li></ul></section>
+      <section><h2>Live tracker activity</h2><ul id="events"><li class="empty">No tracker events yet.</li></ul></section>
+    </main>
+    <script>
+      const config = window.TRACKER_TRANSPARENCY_CONFIG || {};
+      const connection = document.querySelector('#connection');
+      const eventsList = document.querySelector('#events');
+      const optoutsList = document.querySelector('#optouts');
+      const summary = document.querySelector('#summary');
+      const risk = document.querySelector('#risk');
+      const currentUrl = document.querySelector('#current-url');
+      let commitments = new Set();
+      let activePageUrl = null;
+      let supabaseClient = null;
+      const allEvents = [];
+
+      const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
+      const formatDate = (value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const clearEmpty = (list) => { if (list.querySelector('.empty')) list.innerHTML = ''; };
+      function renderEvent(row, prepend = true) {
+        clearEmpty(eventsList); const item = document.createElement('li');
+        item.innerHTML = `<strong>${escapeHtml(row.company_name || row.tracker_domain)}</strong><span class="meta">${escapeHtml(row.category || 'unknown')} · ${escapeHtml(row.tracker_domain)} · ${formatDate(row.created_at)}</span>`;
+        eventsList[prepend ? 'prepend' : 'append'](item);
+      }
+      function renderOptout(row, prepend = true) {
+        clearEmpty(optoutsList); const item = document.createElement('li');
+        const isCommitted = commitments.has(String(row.company_name).toLowerCase());
+        const commitment = isCommitted ? 'committed to honoring this' : 'no known commitment';
+        item.innerHTML = `<strong>Sent to ${escapeHtml(row.company_name)}</strong><span class="meta">${escapeHtml(row.method)} signal — ${commitment} · ${formatDate(row.created_at)}</span>`;
+        optoutsList[prepend ? 'prepend' : 'append'](item);
+      }
+      async function updateRisk(pageUrl) {
+        const trackers = allEvents.filter(row => row.page_url === pageUrl).map(({ company_name, category }) => ({ company_name, category }));
+        currentUrl.textContent = pageUrl; summary.textContent = 'Updating risk summary…';
+        const { data, error } = await supabaseClient.functions.invoke('risk-summary', { body: { page_url: pageUrl, trackers } });
+        if (error || !data) { summary.textContent = 'Risk summary is temporarily unavailable.'; return; }
+        summary.textContent = data.summary; risk.textContent = data.risk_level; risk.className = `badge ${data.risk_level}`;
+      }
+      function receiveEvent(row) { allEvents.push(row); renderEvent(row); if (row.page_url !== activePageUrl) activePageUrl = row.page_url; if (row.page_url === activePageUrl) updateRisk(activePageUrl); }
+
+      if (!config.supabaseUrl || !config.supabaseAnonKey || config.supabaseUrl.includes('YOUR_')) {
+        connection.textContent = 'Add credentials to dashboard/config.js'; connection.classList.add('error');
+      } else {
+        supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+        fetch('./gpc_commitments.json').then(response => response.json()).then(data => { commitments = new Set(data.committed.map(name => name.toLowerCase())); });
+        Promise.all([
+          supabaseClient.from('tracker_events').select('*').order('created_at', { ascending: false }).limit(100),
+          supabaseClient.from('optout_log').select('*').order('created_at', { ascending: false }).limit(50)
+        ]).then(([trackerResult, optoutResult]) => {
+          if (trackerResult.error || optoutResult.error) throw trackerResult.error || optoutResult.error;
+          trackerResult.data.reverse().forEach(row => { allEvents.push(row); renderEvent(row, false); });
+          optoutResult.data.reverse().forEach(row => renderOptout(row, false));
+          if (allEvents.length) { activePageUrl = allEvents.at(-1).page_url; updateRisk(activePageUrl); }
+          connection.textContent = 'Live connection active';
+        }).catch(error => { connection.textContent = `Connection error: ${error.message}`; connection.classList.add('error'); });
+        supabaseClient.channel('tracker-transparency-live')
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tracker_events' }, payload => receiveEvent(payload.new))
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'optout_log' }, payload => renderOptout(payload.new))
+          .subscribe(status => { if (status === 'SUBSCRIBED') connection.textContent = 'Live connection active'; });
+      }
+    </script>
+  </body>
+</html>
