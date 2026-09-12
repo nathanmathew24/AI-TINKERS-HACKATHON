@@ -1,4 +1,4 @@
-# Tracker Transparency — Backend + Dashboard Build Brief
+# Expose — Backend + Dashboard Build Brief
 
 ## What we're building (context for you, Codex)
 

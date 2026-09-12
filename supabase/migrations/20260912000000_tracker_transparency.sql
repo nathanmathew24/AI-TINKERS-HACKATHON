@@ -1,4 +1,4 @@
--- Tracker Transparency demo schema.
+-- Expose demo schema.
 -- Run this migration with the Supabase CLI or paste it into the SQL editor.
 
 create table if not exists public.tracker_events (

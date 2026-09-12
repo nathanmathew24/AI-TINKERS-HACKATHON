@@ -33,6 +33,15 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+#brand {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
 #site-name {
   font-weight: 700;
   font-size: 14px;

@@ -1,6 +1,7 @@
-# Tracker Transparency backend + dashboard
+# Expose backend + dashboard
 
-This repository provides the Supabase side of the Tracker Transparency demo. It deliberately does not include a browser extension.
+This repository provides the Supabase side of the Expose demo, plus the
+browser extension under `extension/`.
 
 ## Deploy the database and function
 

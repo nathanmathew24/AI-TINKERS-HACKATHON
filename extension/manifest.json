@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Tracker Transparency",
+  "name": "Expose",
   "version": "1.0",
   "description": "See who's tracking you on this page, live, and push back.",
   "permissions": [
