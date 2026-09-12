@@ -4,32 +4,78 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Expose</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./config.js"></script>
     <style>
-      :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #08111f; color: #eef5ff; }
-      * { box-sizing: border-box; } body { margin: 0; padding: 28px; }
-      header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #25405f; padding-bottom: 20px; margin-bottom: 24px; }
-      h1 { margin: 0; font-size: clamp(28px, 4vw, 48px); } .connection { color: #a8bed9; font-size: 18px; }
-      main { display: grid; grid-template-columns: 1.3fr .9fr; gap: 24px; } section { background: #101e31; border: 1px solid #25405f; border-radius: 14px; padding: 22px; }
-      h2 { margin: 0 0 16px; font-size: 25px; } .url { color: #a8bed9; overflow-wrap: anywhere; font-size: 16px; }
-      .summary { font-size: 26px; line-height: 1.35; margin: 16px 0; } .badge { display: inline-block; border-radius: 999px; padding: 7px 13px; font-size: 17px; font-weight: 800; text-transform: uppercase; }
-      .low { background: #0c663d; } .medium { background: #8c5a08; } .high { background: #9e2834; }
-      ul { list-style: none; padding: 0; margin: 0; } li { border-top: 1px solid #25405f; padding: 14px 0; font-size: 19px; } li:first-child { border-top: 0; }
-      .meta { display: block; color: #a8bed9; font-size: 15px; margin-top: 5px; }.empty { color: #a8bed9; font-size: 19px; }
-      .error { color: #ffb4bc; } @media (max-width: 800px) { body { padding: 16px; } main { grid-template-columns: 1fr; } }
+      :root {
+        color-scheme: dark;
+        --background: #1c2433;
+        --foreground: #e9ebef;
+        --card: #2a3040;
+        --card-foreground: #e9ebef;
+        --border: #3d4354;
+        --muted-foreground: #a3acc0;
+        --primary: #e05d38;
+        --primary-foreground: #ffffff;
+        --low: #1c7a4d;
+        --medium: #b8720f;
+        --high: #d1453d;
+        --radius: 0.9rem;
+        --font-heading: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+        --font-body: 'Work Sans', ui-sans-serif, system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 32px; background: var(--background); color: var(--foreground); font-family: var(--font-body); }
+      h1, h2, h3 { font-family: var(--font-heading); margin: 0; }
+      header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+      h1 { font-size: clamp(26px, 4vw, 40px); font-weight: 800; letter-spacing: -0.02em; }
+      h1 span { color: var(--primary); }
+      .connection { color: var(--muted-foreground); font-size: 14px; font-weight: 500; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; }
+      main {
+        display: grid;
+        grid-template-columns: 1.3fr .9fr;
+        grid-template-areas: "risk optouts" "events optouts";
+        align-items: start;
+        gap: 20px;
+      }
+      .card-risk { grid-area: risk; }
+      .card-optouts { grid-area: optouts; }
+      .card-events { grid-area: events; }
+      .card {
+        background: var(--card);
+        color: var(--card-foreground);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+        box-shadow: 0 4px 16px -4px rgba(0,0,0,0.35);
+      }
+      h2 { margin: 0 0 18px; font-size: 20px; font-weight: 700; }
+      .url { color: var(--muted-foreground); overflow-wrap: anywhere; font-size: 14px; font-family: ui-monospace, monospace; margin-bottom: 14px; }
+      .summary { font-size: 22px; line-height: 1.45; margin: 0 0 18px; font-weight: 500; }
+      .badge { display: inline-block; border-radius: 999px; padding: 7px 16px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; color: #08111a; }
+      .low { background: #4ade80; } .medium { background: #fbbf24; } .high { background: #fb7185; }
+      ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+      li { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: calc(var(--radius) - 0.35rem); padding: 14px 16px; font-size: 15px; font-weight: 600; }
+      li.empty { color: var(--muted-foreground); font-weight: 500; background: none; border-style: dashed; }
+      .meta { display: block; color: var(--muted-foreground); font-size: 13px; font-weight: 500; margin-top: 4px; }
+      code { background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+      .error { color: var(--high); }
+      @media (max-width: 800px) { body { padding: 16px; } main { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
-    <header><h1>Expose</h1><span id="connection" class="connection">Connecting…</span></header>
+    <header><h1><span>Expose</span></h1><span id="connection" class="connection">Connecting…</span></header>
     <main>
-      <section>
+      <div class="card card-risk">
         <h2>What's happening on this page</h2>
         <div id="current-url" class="url">Watching for activity…</div>
         <p id="summary" class="summary">Nothing detected yet.</p><span id="risk" class="badge low">Low risk</span>
-      </section>
-      <section><h2>What we've asked them to do</h2><ul id="optouts"><li class="empty">Nothing sent yet.</li></ul></section>
-      <section><h2>Who's watching you</h2><ul id="events"><li class="empty">Nothing detected yet.</li></ul></section>
+      </div>
+      <div class="card card-optouts"><h2>What we've asked them to do</h2><ul id="optouts"><li class="empty">Nothing sent yet.</li></ul></div>
+      <div class="card card-events"><h2>Who's watching you</h2><ul id="events"><li class="empty">Nothing detected yet.</li></ul></div>
     </main>
     <script>
       const config = window.TRACKER_TRANSPARENCY_CONFIG || {};
@@ -44,7 +90,7 @@
       let supabaseClient = null;
       const allEvents = [];
 
-      const MAX_VISIBLE_ROWS = 15; // keep the demo tidy - trim oldest as new ones arrive
+      const MAX_VISIBLE_ROWS = 8; // keep the demo tidy - trim oldest as new ones arrive
 
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
       const formatDate = (value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
