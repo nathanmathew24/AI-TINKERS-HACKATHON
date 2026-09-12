@@ -7,20 +7,32 @@ const corsHeaders = {
 type Tracker = { company_name?: string; category?: string };
 type RiskLevel = "low" | "medium" | "high";
 
+// Must stay identical to extension/popup.js's computeScore() weight formula.
+// The popup and this function are two separate surfaces showing the same
+// page's risk level — if the formulas ever drift apart, they can disagree
+// on the same data, which is the single most damaging inconsistency this
+// product can show. The AI below only ever writes the sentence; it never
+// decides low/medium/high.
+function computeRiskLevel(trackers: Tracker[]): { level: RiskLevel; brokerCount: number } {
+  const brokerCount = trackers.filter((t) => t.category === "data_broker").length;
+  const advertisingCount = trackers.filter((t) => t.category === "advertising").length;
+  const analyticsCount = trackers.filter((t) => t.category === "analytics").length;
+  const weight = brokerCount * 3 + advertisingCount * 1.5 + analyticsCount * 1;
+
+  let level: RiskLevel = "low";
+  if (weight >= 12 || brokerCount >= 3) level = "high";
+  else if (weight >= 5 || brokerCount >= 1) level = "medium";
+
+  return { level, brokerCount };
+}
+
 function fallbackSummary(trackers: Tracker[]) {
-  const dataBrokers = trackers.filter((tracker) =>
-    String(tracker.category ?? "").toLowerCase().includes("data_broker")
-  ).length;
-  const riskLevel: RiskLevel = dataBrokers >= 2 || trackers.length >= 8
-    ? "high"
-    : dataBrokers >= 1 || trackers.length >= 3
-    ? "medium"
-    : "low";
-  const brokerPhrase = dataBrokers === 1 ? " including 1 data broker" : dataBrokers > 1 ? ` including ${dataBrokers} data brokers` : "";
+  const { level, brokerCount } = computeRiskLevel(trackers);
+  const brokerPhrase = brokerCount === 1 ? " including 1 data broker" : brokerCount > 1 ? ` including ${brokerCount} data brokers` : "";
 
   return {
     summary: `This page contacted ${trackers.length} ${trackers.length === 1 ? "company" : "companies"}${brokerPhrase}.`,
-    risk_level: riskLevel,
+    risk_level: level,
   };
 }
 
@@ -54,6 +66,10 @@ Deno.serve(async (request) => {
   const apiKey = Deno.env.get("OPENROUTER_API_KEY");
   if (!apiKey) return jsonResponse(fallback);
 
+  // Computed once, always used for risk_level regardless of what the model
+  // says — see computeRiskLevel's comment.
+  const { level } = computeRiskLevel(trackers);
+
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -64,9 +80,9 @@ Deno.serve(async (request) => {
         messages: [
           {
             role: "system",
-            content: "Return JSON only: {\"summary\": string, \"risk_level\": \"low\"|\"medium\"|\"high\"}. Write one short, plain-English privacy sentence. Risk rises with tracker count and especially data brokers.",
+            content: `Return JSON only: {"summary": string}. Write one short, plain-English sentence describing what just happened on this page for a non-technical reader. We have already determined the risk level ourselves as "${level}" - do not state a different risk level or contradict it, just describe the companies and, if relevant, mention data brokers by name.`,
           },
-          { role: "user", content: JSON.stringify({ page_url: body.page_url, trackers }) },
+          { role: "user", content: JSON.stringify({ page_url: body.page_url, trackers, risk_level: level }) },
         ],
         temperature: 0.2,
         max_tokens: 100,
@@ -75,8 +91,8 @@ Deno.serve(async (request) => {
     if (!response.ok) throw new Error(`OpenRouter returned ${response.status}`);
     const completion = await response.json();
     const parsed = JSON.parse(completion.choices?.[0]?.message?.content ?? "{}");
-    if (typeof parsed.summary !== "string" || !["low", "medium", "high"].includes(parsed.risk_level)) throw new Error("Invalid model JSON");
-    return jsonResponse({ summary: parsed.summary.slice(0, 350), risk_level: parsed.risk_level });
+    if (typeof parsed.summary !== "string") throw new Error("Invalid model JSON");
+    return jsonResponse({ summary: parsed.summary.slice(0, 350), risk_level: level });
   } catch (error) {
     console.error("Risk summary fallback:", error);
     return jsonResponse(fallback);

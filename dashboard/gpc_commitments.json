@@ -1,9 +1,19 @@
 {
   "committed": [
-    "The New York Times", "The Washington Post", "The Guardian", "The Atlantic",
-    "The New Yorker", "Condé Nast", "Vox Media", "BuzzFeed", "Automattic",
-    "DuckDuckGo", "Brave", "Mozilla", "Medium", "Vimeo", "Yelp"
+    "Google Analytics",
+    "Google Ads",
+    "Google (DoubleClick)",
+    "Google Tag Manager",
+    "Meta",
+    "Criteo",
+    "The Trade Desk",
+    "Adobe",
+    "Adobe Analytics",
+    "Microsoft Advertising",
+    "Microsoft Clarity",
+    "Comscore",
+    "Quantcast"
   ],
-  "source": "Curated demo list; verify current commitments against globalprivacycontrol.org before making public claims.",
+  "source": "Must match extension/gpc_commitments.json exactly — this list has to describe the same tracker companies the extension detects, not publishers. Verify against globalprivacycontrol.org before making public claims.",
   "updated": "2026-09-12"
 }

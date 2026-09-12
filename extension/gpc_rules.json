@@ -16,6 +16,10 @@
         "xmlhttprequest",
         "script",
         "image",
+        "stylesheet",
+        "font",
+        "media",
+        "websocket",
         "ping",
         "other"
       ]
