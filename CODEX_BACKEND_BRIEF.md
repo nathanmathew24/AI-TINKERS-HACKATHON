@@ -1,4 +1,4 @@
-# Expose — Backend + Dashboard Build Brief
+# Expose - Backend + Dashboard Build Brief
 
 ## What we're building (context for you, Codex)
 
@@ -10,7 +10,7 @@ was actually sent.
 
 **Your scope is everything EXCEPT the browser extension itself.** A teammate is
 building the Chrome extension in parallel, on a separate branch. The extension
-will insert rows directly into your Supabase tables using the anon key — you do
+will insert rows directly into your Supabase tables using the anon key - you do
 not need to build anything that talks back to the extension. Your job is: the
 database, one Edge Function, and a live dashboard.
 
@@ -43,16 +43,16 @@ create table optout_log (
 ```
 
 Enable row-level security but add a permissive INSERT and SELECT policy for the
-`anon` role on both tables — this is a hackathon demo, not production, so don't
+`anon` role on both tables - this is a hackathon demo, not production, so don't
 spend time on tight auth.
 
 ---
 
-## Task 1 — Supabase project setup
+## Task 1 - Supabase project setup
 
 1. Create the two tables above via SQL editor or migration.
 2. Enable **Realtime** on `tracker_events` (Database → Replication → toggle it
-   on) — the dashboard needs to subscribe to live inserts.
+   on) - the dashboard needs to subscribe to live inserts.
 3. Confirm you can insert a manual test row via the Supabase table UI and see
    it appear.
 4. Note down: project URL, anon key, service role key (service key stays
@@ -60,7 +60,7 @@ spend time on tight auth.
 
 ---
 
-## Task 2 — Edge Function: Risk Synthesis Agent
+## Task 2 - Edge Function: Risk Synthesis Agent
 
 Create a Supabase Edge Function (Deno) called `risk-summary`.
 
@@ -84,7 +84,7 @@ Create a Supabase Edge Function (Deno) called `risk-summary`.
 }
 ```
 
-**Use OpenRouter for the LLM call, not OpenAI directly** — we have OpenRouter
+**Use OpenRouter for the LLM call, not OpenAI directly** - we have OpenRouter
 sponsor credits for this hackathon. Call:
 
 ```
@@ -93,7 +93,7 @@ Authorization: Bearer <OPENROUTER_API_KEY>
 Content-Type: application/json
 
 {
-  "model": "<pick a fast/cheap model — this only needs to summarize a short list, not reason deeply>",
+  "model": "<pick a fast/cheap model - this only needs to summarize a short list, not reason deeply>",
   "messages": [
     { "role": "system", "content": "You are a plain-English privacy summarizer. Given a list of companies that tracked a user on a webpage, write ONE short sentence a non-technical person would understand, then classify risk as low, medium, or high based on how many data brokers/trackers are present. Respond as JSON: {\"summary\": string, \"risk_level\": \"low\"|\"medium\"|\"high\"}." },
     { "role": "user", "content": "<the trackers list as JSON>" }
@@ -104,38 +104,38 @@ Content-Type: application/json
 Store `OPENROUTER_API_KEY` as a Supabase Edge Function secret
 (`supabase secrets set OPENROUTER_API_KEY=...`), never hardcode it.
 
-Keep latency low — this gets called live during the demo every time the
+Keep latency low - this gets called live during the demo every time the
 tracker list on a page changes, so pick a fast model and keep the prompt short.
 
 ---
 
-## Task 3 — GPC commitment list
+## Task 3 - GPC commitment list
 
-Hardcode a small JSON file (`gpc_commitments.json`) — no API exists for this,
+Hardcode a small JSON file (`gpc_commitments.json`) - no API exists for this,
 so just curate ~10-15 well-known companies that have publicly committed to
 honoring Global Privacy Control (e.g. via globalprivacycontrol.org's public
 list) vs. ones with no known commitment. This is used to label opt-out log
-entries honestly: "sent — committed" vs. "sent — no known commitment."
+entries honestly: "sent - committed" vs. "sent - no known commitment."
 
 ---
 
-## Task 4 — Opt-out logging
+## Task 4 - Opt-out logging
 
 When the extension sends a GPC signal (it does this on its own side, you don't
 trigger it), it will insert a row into `optout_log` with `status: "sent"`.
 Write a small piece of logic (can be a DB trigger, or handled client-side in
 the dashboard, whichever is faster for you) that looks up `company_name`
 against `gpc_commitments.json` and updates/displays whether that company is
-"committed" or "no_commitment". Do not claim "confirmed" or "opted out" — only
+"committed" or "no_commitment". Do not claim "confirmed" or "opted out" - only
 ever "sent" + commitment status. This honesty framing matters for the pitch.
 
 ---
 
-## Task 5 — Live dashboard (`/dashboard/index.html`)
+## Task 5 - Live dashboard (`/dashboard/index.html`)
 
 **Important: this must be a plain static HTML file you run locally (e.g. via
 `npx serve` or just opening the file), NOT deployed inside any sandboxed
-artifact tool** — Supabase Realtime needs an open websocket connection that
+artifact tool** - Supabase Realtime needs an open websocket connection that
 sandboxed preview tools block.
 
 Build a single-page dashboard that:
@@ -144,25 +144,25 @@ Build a single-page dashboard that:
    `https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2`
 2. Subscribes to `tracker_events` via Realtime, and as new rows come in,
    appends them to a live-growing list showing: company name, category,
-   timestamp — this should visibly grow while someone is browsing on the
+   timestamp - this should visibly grow while someone is browsing on the
    other screen during the demo.
 3. Shows the current risk summary (call the `risk-summary` Edge Function
    whenever the tracker list for the current `page_url` changes, display the
    returned `summary` sentence and a colored badge for `risk_level`).
 4. Shows the `optout_log` as a running list with each entry's honest status
-   ("Sent to Google Ads — committed to honoring this" / "Sent to X — no known
+   ("Sent to Google Ads - committed to honoring this" / "Sent to X - no known
    commitment").
-5. Keep styling minimal — this needs to be readable from a few feet away on a
+5. Keep styling minimal - this needs to be readable from a few feet away on a
    projector, not polished. Big text, clear list, no clutter.
 
 ---
 
 ## Priority order if you run low on time
 
-1. Supabase tables + Realtime working (non-negotiable — everything depends on it)
+1. Supabase tables + Realtime working (non-negotiable - everything depends on it)
 2. Dashboard showing live tracker events (this is the single most important demo visual)
 3. Risk Synthesis Edge Function + summary display
-4. Opt-out log + GPC commitment labeling (cut this last if time runs out — it's
+4. Opt-out log + GPC commitment labeling (cut this last if time runs out - it's
    the smallest, most skippable piece)
 
 ## Environment variables you'll need

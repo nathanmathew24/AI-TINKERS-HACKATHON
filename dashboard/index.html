@@ -44,7 +44,7 @@
       let supabaseClient = null;
       const allEvents = [];
 
-      const MAX_VISIBLE_ROWS = 15; // keep the demo tidy — trim oldest as new ones arrive
+      const MAX_VISIBLE_ROWS = 15; // keep the demo tidy - trim oldest as new ones arrive
 
       const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]);
       const formatDate = (value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -60,7 +60,7 @@
       const CATEGORY_LABELS = {
         advertising: 'Advertising company',
         analytics: 'Analytics company',
-        data_broker: 'Data broker — buys and sells personal data',
+        data_broker: 'Data broker: buys and sells personal data',
       };
 
       function renderEvent(row, prepend = true) {
@@ -75,7 +75,7 @@
         const isCommitted = commitments.has(String(row.company_name).toLowerCase());
         const commitment = isCommitted
           ? "They've publicly promised to respect this"
-          : "They haven't promised to listen — we can't guarantee they will";
+          : "They haven't promised to listen, so we can't guarantee they will";
         item.innerHTML = `<strong>We told ${escapeHtml(row.company_name)} to stop tracking you</strong><span class="meta">${commitment} · sent at ${formatDate(row.created_at)}</span>`;
         optoutsList[prepend ? 'prepend' : 'append'](item);
         if (prepend) trimList(optoutsList);
@@ -84,7 +84,7 @@
         const trackers = allEvents.filter(row => row.page_url === pageUrl).map(({ company_name, category }) => ({ company_name, category }));
         currentUrl.textContent = pageUrl; summary.textContent = 'Figuring out how risky this is…';
         const { data, error } = await supabaseClient.functions.invoke('risk-summary', { body: { page_url: pageUrl, trackers } });
-        if (error || !data) { summary.textContent = "Couldn't check right now — try again in a moment."; return; }
+        if (error || !data) { summary.textContent = "Couldn't check right now. Try again in a moment."; return; }
         summary.textContent = data.summary; risk.textContent = `${data.risk_level} risk`; risk.className = `badge ${data.risk_level}`;
       }
       function receiveEvent(row) { allEvents.push(row); renderEvent(row); if (row.page_url !== activePageUrl) activePageUrl = row.page_url; if (row.page_url === activePageUrl) updateRisk(activePageUrl); }

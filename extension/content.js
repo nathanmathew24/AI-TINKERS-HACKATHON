@@ -1,7 +1,7 @@
 // Secondary signal: scan the page's own <script> tags for known tracker
 // domains. This catches some tracking that the network-request listener in
 // background.js might narrowly miss, and doubles as a signal source that
-// doesn't depend on timing. It does NOT catch server-side tracking — nothing
+// doesn't depend on timing. It does NOT catch server-side tracking - nothing
 // running in the browser can see that.
 
 function collectScriptHosts() {

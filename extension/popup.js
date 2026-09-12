@@ -26,7 +26,7 @@ function computeScore() {
   if (weight >= 12 || brokerCount >= 3) level = "high";
   else if (weight >= 5 || brokerCount >= 1) level = "medium";
 
-  // Only show "still scanning" briefly — after the timeout, zero trackers
+  // Only show "still scanning" briefly - after the timeout, zero trackers
   // found is a real result (low risk), not a stuck loading state.
   if (items.length === 0 && !scanTimedOut) level = "unknown";
   return { level, total: items.length, brokerCount };
@@ -71,7 +71,7 @@ function render() {
     li.innerHTML = `
       <span>${item.company}</span>
       <span class="optout-status ${isCommitted ? "committed" : "unknown"}">
-        ${isCommitted ? "Sent — committed" : "Sent — no known commitment"}
+        ${isCommitted ? "Sent: committed" : "Sent: no known commitment"}
       </span>
     `;
     el.optoutList.appendChild(li);

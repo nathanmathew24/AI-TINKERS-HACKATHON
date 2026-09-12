@@ -12,7 +12,7 @@ loadTrackers().catch((err) => console.error("[Expose] failed to load trackers.js
 
 // --- Helpers ---
 
-// Very simplified "registrable domain" extraction — good enough for a demo,
+// Very simplified "registrable domain" extraction - good enough for a demo,
 // not a full public-suffix-list implementation.
 function getRegistrableDomain(hostname) {
   const parts = hostname.split(".");
@@ -34,7 +34,7 @@ const seen = new Set(); // key: `${tabId}::${trackerDomain}`
 const tabTrackers = new Map(); // tabId -> [{ company, category, domain }]
 
 // The actual current page URL per tab (webRequest's `initiator` is only an
-// origin, not the full URL with path — this is what gives us the real one).
+// origin, not the full URL with path - this is what gives us the real one).
 const tabUrls = new Map(); // tabId -> full page URL
 
 function recordForTab(tabId, match) {
@@ -82,7 +82,7 @@ async function insertTrackerEvent(pageUrl, trackerDomain, company, category) {
 // Every detected company also gets a GPC opt-out log entry, since the
 // Sec-GPC header (set via gpc_rules.json) is already being sent to every
 // outbound request regardless. This just records that fact per company so
-// the dashboard can show it. Status is always "sent" — whether a company
+// the dashboard can show it. Status is always "sent" - whether a company
 // actually honors it is a separate, unverifiable question the UI is honest
 // about, not something this log claims to know.
 async function insertOptoutLog(company) {
